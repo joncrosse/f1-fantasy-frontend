@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>F1 Fantasy</title>
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+</head>
+<body>
+    <button id="logged-out" disabled>Log In / Sign Up</button>
+
+    <div id="logged-in" style="display: none;">
+        <p>Logged in as <span id="user-email"></span></p>
+        <pre id="token"></pre>
+        <button id="logout">Log Out</button>
+    </div>
+    <select id="season-select">
+        <option value="2025">2025</option>
+        <option value="2026">2026</option>
+    </select>
+    <div id="app-content"></div>
+    <div id="pick-form"></div>
+
+    <script>
+        let auth0Client;
+        let accessToken;
+
+        const API_BASE = "https://f1-fantasy-api-969674889181.us-central1.run.app";
+
+        async function init() {
+            auth0Client = await auth0.createAuth0Client({
+                domain: "dev-ju7ftymn7fbv0nm8.us.auth0.com",
+                clientId: "r3Lo692YGc1eTp1VYMGRX5yKzPYrgkIV",
+                authorizationParams: {
+                    audience: "https://f1-fantasy-api",
+                    redirect_uri: window.location.origin,
+                    scope: "openid profile email offline_access"
+                },
+                useRefreshTokens: true,
+                cacheLocation: "localstorage"
+            });
+
+            const query = window.location.search;
+            if (query.includes("code=") && query.includes("state=")) {
+                await auth0Client.handleRedirectCallback();
+                window.history.replaceState({}, document.title, "/");
+            }
+
+            document.getElementById("logged-out").disabled = false;
+
+            const isAuthenticated = await auth0Client.isAuthenticated();
+            updateUI(isAuthenticated);
+
+            if (isAuthenticated) {
+                accessToken = await auth0Client.getTokenSilently();
+                const user = await auth0Client.getUser();
+                document.getElementById("user-email").innerText = user.email || "(no email)";
+
+                const token = await auth0Client.getTokenSilently();
+                document.getElementById("token").innerText = token;
+
+                await fetch(`${API_BASE}/users/me`, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`
+                    }
+                });
+            }
+        }
+
+        function updateUI(isAuthenticated) {
+            document.getElementById("logged-out").style.display = isAuthenticated ? "none" : "block";
+            document.getElementById("logged-in").style.display = isAuthenticated ? "block" : "none";
+        }
+
+        document.getElementById("logged-out").addEventListener("click", () => {
+            auth0Client.loginWithRedirect();
+        });
+
+        document.getElementById("logged-in").addEventListener("click", () => {
+            auth0Client.logout({ logoutParams: { returnTo: window.location.origin } });
+        });
+
+        document.getElementById("season-select").addEventListener("change", (event) => {
+            loadRaces(event.target.value);
+        });
+
+        init();
+
+        async function loadRaces(season){
+            const response = await fetch(`${API_BASE}/races/${season}`);
+
+            if(!response.ok){
+                document.getElementById("app-content").innerText = "No races found for that season.";
+                return;
+            }
+
+            const races = await response.json();
+            await renderRaces(races);
+        }
+
+        async function renderRaces(races) {
+            const todayDate = new Date().toISOString('en-US');
+            const container = document.getElementById("app-content");
+            container.innerHTML = "";
+        
+            for (const race of races) {
+                const div = document.createElement("div");
+                div.innerText = `Round ${race.round}: ${race.race_name} (${race.circuit_name}) - ${race.date}`;
+            
+                if (accessToken /*&& todayDate < race.date*/) {
+                    const picksResponse = await fetch(`${API_BASE}/picks/${race.season}/${race.round}`, {
+                        headers: { "Authorization": `Bearer ${accessToken}` }
+                    });
+                
+                    if (picksResponse.ok) {
+                        const picks = await picksResponse.json();
+                        if (picks.length > 0) {
+                            renderExistingPicks(div, race, picks);
+                        } else {
+                            renderPickButton(div, race);
+                        }
+                    }
+                }
+            
+                container.appendChild(div);
+            }
+        }
+
+        async function showPickForm(race) {
+            selectedRace = race;
+        
+            const response = await fetch(`${API_BASE}/drivers/${race.season || currentSeason}`);
+            const drivers = await response.json();
+        
+            const formContainer = document.getElementById("pick-form");
+            formContainer.innerHTML = `<h3>Picks for Round ${race.round}: ${race.race_name}</h3>`;
+        
+            drivers.forEach(driver => {
+                const label = document.createElement("label");
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = driver.id;
+                checkbox.className = "driver-checkbox";
+                label.appendChild(checkbox);
+                label.append(driver.name);
+                formContainer.appendChild(label);
+                formContainer.appendChild(document.createElement("br"));
+            });
+        
+            const submitButton = document.createElement("button");
+            submitButton.innerText = "Submit";
+            submitButton.addEventListener("click", submitPicks);
+            formContainer.appendChild(submitButton);
+        }
+
+        async function submitPicks() {
+            const checkboxes = document.querySelectorAll(".driver-checkbox:checked");
+            const driverIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+            if (driverIds.length !== 5) {
+                alert("You must select exactly 5 drivers.");
+                return;
+            }
+        
+            const response = await fetch(`${API_BASE}/picks`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    race_id: selectedRace.id,
+                    driver_ids: driverIds
+                })
+            });
+        
+            if (response.ok) {
+                alert("Picks submitted!");
+            } else {
+                const error = await response.json();
+                alert(`Failed to submit picks: ${error.detail}`);
+            }
+        }
+
+        
+
+        function renderPickButton(div, race) {
+            const pickButton = document.createElement("button");
+            pickButton.innerText = "Submit picks for this race";
+            pickButton.addEventListener("click", () => showPickForm(race));
+            div.appendChild(pickButton);
+        }
+
+        async function renderExistingPicks(div, race, picks) {
+            const scoreResponse = await fetch(`${API_BASE}/scores/${race.season}?race_id=${race.id}`, {
+                headers: { "Authorization": `Bearer ${accessToken}` }
+            });
+            
+            const scoreData = scoreResponse.ok ? await scoreResponse.json() : null;
+            console.log(scoreData);
+            console.log(picks);
+            const picksText = picks.map(p => p.name).join(", ");
+            const scoreText = scoreData && scoreData.scores ? ` - ${scoreData.scores.points} points` : "";
+        
+            const p = document.createElement("p");
+            p.innerText = `Your picks: ${picksText}${scoreText}`;
+            div.appendChild(p);
+        }
+            </script>
+</body>
+</html>
