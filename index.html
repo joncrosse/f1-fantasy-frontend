@@ -76,7 +76,7 @@
         });
 
         document.getElementById("logged-in").addEventListener("click", () => {
-            auth0Client.logout({ logoutParams: { returnTo: window.location.origin } });
+            auth0Client.logout({ logoutParams: { returnTo: window.location.href.split('?)[0] } });
         });
 
         document.getElementById("season-select").addEventListener("change", (event) => {
