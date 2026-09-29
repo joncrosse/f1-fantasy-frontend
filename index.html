@@ -1,210 +1,433 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>F1 Fantasy</title>
-    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>F1 Fantasy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+<style>
+  :root {
+    --tarmac: #EDEAE3;
+    --surface: #FFFFFF;
+    --racing-green: #0B3D2E;
+    --signal-red: #D8232A;
+    --ink: #1A1A1A;
+    --ink-soft: #565650;
+    --border: #D9D5CB;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--tarmac);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  h1, h2, h3, .display {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+
+  header {
+    background: var(--racing-green);
+    color: var(--surface);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  header h1 {
+    font-size: 1.6rem;
+    text-transform: none;
+  }
+
+  header .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 4px;
+    padding: 0.6rem 1.1rem;
+    cursor: pointer;
+    min-height: 44px;
+  }
+
+  .btn-primary {
+    background: var(--signal-red);
+    color: var(--surface);
+  }
+  .btn-primary:hover { background: #B81E24; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--surface);
+    border: 1px solid rgba(255,255,255,0.5);
+  }
+
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1.25rem;
+  }
+
+  select#season-select {
+    width: 100%;
+    max-width: 220px;
+    padding: 0.6rem 0.75rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    margin-bottom: 1.25rem;
+    min-height: 44px;
+  }
+
+  .race-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--racing-green);
+    border-radius: 4px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .race-round {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: var(--racing-green);
+    min-width: 2.5ch;
+    line-height: 1;
+  }
+
+  .race-body { flex: 1; min-width: 0; }
+
+  .race-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+
+  .race-meta {
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    margin-top: 0.15rem;
+  }
+
+  .race-actions { margin-top: 0.6rem; }
+
+  .picks-summary {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.95rem;
+    margin-top: 0.4rem;
+  }
+
+  .picks-summary .points {
+    font-weight: 700;
+    color: var(--signal-red);
+  }
+
+  #pick-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .driver-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    margin: 0.75rem 0 1rem;
+  }
+
+  @media (min-width: 520px) {
+    .driver-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .driver-option {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.6rem 0.7rem;
+    font-size: 0.95rem;
+  }
+
+  .driver-option input {
+    width: 20px;
+    height: 20px;
+  }
+
+  @media (max-width: 480px) {
+    header { padding: 0.85rem 1rem; }
+    header h1 { font-size: 1.35rem; }
+    main { padding: 1rem; }
+  }
+</style>
 </head>
 <body>
-    <button id="logged-out" disabled>Log In / Sign Up</button>
 
-    <div id="logged-in" style="display: none;">
-        <p>Logged in as <span id="user-email"></span></p>
-        <pre id="token"></pre>
-        <button id="logout">Log Out</button>
-    </div>
-    <select id="season-select">
-        <option value="2025">2025</option>
-        <option value="2026">2026</option>
-    </select>
-    <div id="app-content"></div>
-    <div id="pick-form"></div>
+<header>
+  <h1>F1 Fantasy</h1>
+  <div id="logged-out">
+    <button id="login" class="btn-primary">Log In / Sign Up</button>
+  </div>
+  <div id="logged-in" class="user-info" style="display: none;">
+    <span>Logged in as <span id="user-email"></span></span>
+    <button id="logout" class="btn-ghost">Log Out</button>
+  </div>
+</header>
 
-    <script>
-        let auth0Client;
-        let accessToken;
+<main>
+  <select id="season-select">
+    <option value="2025">2025</option>
+    <option value="2026">2026</option>
+  </select>
 
-        const API_BASE = "https://f1-fantasy-api-969674889181.us-central1.run.app";
+  <div id="app-content"></div>
+  <div id="pick-form"></div>
+</main>
 
-        async function init() {
-            auth0Client = await auth0.createAuth0Client({
-                domain: "dev-ju7ftymn7fbv0nm8.us.auth0.com",
-                clientId: "r3Lo692YGc1eTp1VYMGRX5yKzPYrgkIV",
-                authorizationParams: {
-                    audience: "https://f1-fantasy-api",
-                    redirect_uri: window.location.href.split('?')[0],
-                    scope: "openid profile email offline_access"
-                },
-                useRefreshTokens: true,
-                cacheLocation: "localstorage"
-            });
+<script>
+let auth0Client;
+let accessToken;
+let selectedRace = null;
 
-            const query = window.location.search;
-            if (query.includes("code=") && query.includes("state=")) {
-                await auth0Client.handleRedirectCallback();
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
+const API_BASE = "https://f1-fantasy-api-969674889181.us-central1.run.app";
 
-            document.getElementById("logged-out").disabled = false;
+async function init() {
+    auth0Client = await auth0.createAuth0Client({
+        domain: "dev-ju7ftymn7fbv0nm8.us.auth0.com",
+        clientId: "r3Lo692YGc1eTp1VYMGRX5yKzPYrgkIV",
+        authorizationParams: {
+            audience: "https://f1-fantasy-api",
+            redirect_uri: window.location.href.split('?')[0],
+            scope: "openid profile email offline_access"
+        },
+        useRefreshTokens: true,
+        cacheLocation: "localstorage"
+    });
 
-            const isAuthenticated = await auth0Client.isAuthenticated();
-            updateUI(isAuthenticated);
+    const query = window.location.search;
+    if (query.includes("code=") && query.includes("state=")) {
+        await auth0Client.handleRedirectCallback();
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 
-            if (isAuthenticated) {
-                accessToken = await auth0Client.getTokenSilently();
-                const user = await auth0Client.getUser();
-                document.getElementById("user-email").innerText = user.email || "(no email)";
+    document.getElementById("login").disabled = false;
 
-                const token = await auth0Client.getTokenSilently();
-                document.getElementById("token").innerText = token;
+    const isAuthenticated = await auth0Client.isAuthenticated();
+    updateUI(isAuthenticated);
 
-                await fetch(`${API_BASE}/users/me`, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": `Bearer ${accessToken}`
-                    }
-                });
-            }
-        }
+    if (isAuthenticated) {
+        accessToken = await auth0Client.getTokenSilently();
+        const user = await auth0Client.getUser();
+        document.getElementById("user-email").innerText = user.email || "(no email)";
 
-        function updateUI(isAuthenticated) {
-            document.getElementById("logged-out").style.display = isAuthenticated ? "none" : "block";
-            document.getElementById("logged-in").style.display = isAuthenticated ? "block" : "none";
-        }
-
-        document.getElementById("logged-out").addEventListener("click", () => {
-            auth0Client.loginWithRedirect();
+        await fetch(`${API_BASE}/users/me`, {
+            method: "PUT",
+            headers: { "Authorization": `Bearer ${accessToken}` }
         });
+    }
 
-        document.getElementById("logged-in").addEventListener("click", () => {
-            auth0Client.logout({ logoutParams: { returnTo: window.location.href.split('?')[0] } });
-        });
+    loadRaces(document.getElementById("season-select").value);
+}
 
-        document.getElementById("season-select").addEventListener("change", (event) => {
-            loadRaces(event.target.value);
-        });
+function updateUI(isAuthenticated) {
+    document.getElementById("logged-out").style.display = isAuthenticated ? "none" : "block";
+    document.getElementById("logged-in").style.display = isAuthenticated ? "flex" : "none";
+}
 
-        init();
+async function loadRaces(season) {
+    const response = await fetch(`${API_BASE}/races/${season}`);
+    if (!response.ok) {
+        document.getElementById("app-content").innerText = "No races found for that season.";
+        return;
+    }
+    const races = await response.json();
+    await renderRaces(races);
+}
 
-        async function loadRaces(season){
-            const response = await fetch(`${API_BASE}/races/${season}`);
+async function renderRaces(races) {
+    const container = document.getElementById("app-content");
+    container.innerHTML = "";
 
-            if(!response.ok){
-                document.getElementById("app-content").innerText = "No races found for that season.";
-                return;
-            }
+    for (const race of races) {
+        const row = document.createElement("div");
+        row.className = "race-row";
 
-            const races = await response.json();
-            await renderRaces(races);
-        }
+        const round = document.createElement("div");
+        round.className = "race-round";
+        round.innerText = race.round;
 
-        async function renderRaces(races) {
-            const todayDate = new Date().toISOString('en-US');
-            const container = document.getElementById("app-content");
-            container.innerHTML = "";
-        
-            for (const race of races) {
-                const div = document.createElement("div");
-                div.innerText = `Round ${race.round}: ${race.race_name} (${race.circuit_name}) - ${race.date}`;
-            
-                if (accessToken /*&& todayDate < race.date*/) {
-                    const picksResponse = await fetch(`${API_BASE}/picks/${race.season}/${race.round}`, {
-                        headers: { "Authorization": `Bearer ${accessToken}` }
-                    });
-                
-                    if (picksResponse.ok) {
-                        const picks = await picksResponse.json();
-                        if (picks.length > 0) {
-                            renderExistingPicks(div, race, picks);
-                        } else {
-                            renderPickButton(div, race);
-                        }
-                    }
-                }
-            
-                container.appendChild(div);
-            }
-        }
+        const body = document.createElement("div");
+        body.className = "race-body";
 
-        async function showPickForm(race) {
-            selectedRace = race;
-        
-            const response = await fetch(`${API_BASE}/drivers/${race.season || currentSeason}`);
-            const drivers = await response.json();
-        
-            const formContainer = document.getElementById("pick-form");
-            formContainer.innerHTML = `<h3>Picks for Round ${race.round}: ${race.race_name}</h3>`;
-        
-            drivers.forEach(driver => {
-                const label = document.createElement("label");
-                const checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.value = driver.id;
-                checkbox.className = "driver-checkbox";
-                label.appendChild(checkbox);
-                label.append(driver.name);
-                formContainer.appendChild(label);
-                formContainer.appendChild(document.createElement("br"));
-            });
-        
-            const submitButton = document.createElement("button");
-            submitButton.innerText = "Submit";
-            submitButton.addEventListener("click", submitPicks);
-            formContainer.appendChild(submitButton);
-        }
+        const name = document.createElement("div");
+        name.className = "race-name";
+        name.innerText = race.race_name;
 
-        async function submitPicks() {
-            const checkboxes = document.querySelectorAll(".driver-checkbox:checked");
-            const driverIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        
-            if (driverIds.length !== 5) {
-                alert("You must select exactly 5 drivers.");
-                return;
-            }
-        
-            const response = await fetch(`${API_BASE}/picks`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${accessToken}`
-                },
-                body: JSON.stringify({
-                    race_id: selectedRace.id,
-                    driver_ids: driverIds
-                })
-            });
-        
-            if (response.ok) {
-                alert("Picks submitted!");
-            } else {
-                const error = await response.json();
-                alert(`Failed to submit picks: ${error.detail}`);
-            }
-        }
+        const meta = document.createElement("div");
+        meta.className = "race-meta";
+        meta.innerText = `${race.circuit_name} — ${race.date}`;
 
-        
+        body.appendChild(name);
+        body.appendChild(meta);
 
-        function renderPickButton(div, race) {
-            const pickButton = document.createElement("button");
-            pickButton.innerText = "Submit picks for this race";
-            pickButton.addEventListener("click", () => showPickForm(race));
-            div.appendChild(pickButton);
-        }
+        const actions = document.createElement("div");
+        actions.className = "race-actions";
+        body.appendChild(actions);
 
-        async function renderExistingPicks(div, race, picks) {
-            const scoreResponse = await fetch(`${API_BASE}/scores/${race.season}?race_id=${race.id}`, {
+        row.appendChild(round);
+        row.appendChild(body);
+
+        if (accessToken) {
+            const picksResponse = await fetch(`${API_BASE}/picks/${race.season}/${race.round}`, {
                 headers: { "Authorization": `Bearer ${accessToken}` }
             });
-            
-            const scoreData = scoreResponse.ok ? await scoreResponse.json() : null;
-            console.log(scoreData);
-            console.log(picks);
-            const picksText = picks.map(p => p.name).join(", ");
-            const scoreText = scoreData && scoreData.scores ? ` - ${scoreData.scores.points} points` : "";
-        
-            const p = document.createElement("p");
-            p.innerText = `Your picks: ${picksText}${scoreText}`;
-            div.appendChild(p);
+
+            if (picksResponse.ok) {
+                const picks = await picksResponse.json();
+                if (picks.length > 0) {
+                    await renderExistingPicks(actions, race, picks);
+                } else {
+                    renderPickButton(actions, race);
+                }
+            }
         }
-            </script>
+
+        container.appendChild(row);
+    }
+}
+
+function renderPickButton(container, race) {
+    const pickButton = document.createElement("button");
+    pickButton.className = "btn-primary";
+    pickButton.innerText = "Submit picks";
+    pickButton.addEventListener("click", () => showPickForm(race));
+    container.appendChild(pickButton);
+}
+
+async function renderExistingPicks(container, race, picks) {
+    const scoreResponse = await fetch(`${API_BASE}/scores/${race.season}?race_id=${race.id}`, {
+        headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+    const scoreData = scoreResponse.ok ? await scoreResponse.json() : null;
+
+    const picksText = picks.map(p => p.name).join(", ");
+    const points = scoreData && scoreData.scores ? scoreData.scores.points : null;
+
+    const summary = document.createElement("div");
+    summary.className = "picks-summary";
+    summary.innerHTML = `Your picks: ${picksText}` + (points !== null ? ` — <span class="points">${points} pts</span>` : "");
+    container.appendChild(summary);
+}
+
+async function showPickForm(race) {
+    selectedRace = race;
+
+    const response = await fetch(`${API_BASE}/drivers/${race.season}`);
+    const drivers = await response.json();
+
+    const formContainer = document.getElementById("pick-form");
+    formContainer.innerHTML = `<h3>Picks for Round ${race.round}: ${race.race_name}</h3>`;
+
+    const grid = document.createElement("div");
+    grid.className = "driver-grid";
+
+    drivers.forEach(driver => {
+        const label = document.createElement("label");
+        label.className = "driver-option";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = driver.id;
+        checkbox.className = "driver-checkbox";
+        label.appendChild(checkbox);
+        label.append(driver.name);
+        grid.appendChild(label);
+    });
+
+    formContainer.appendChild(grid);
+
+    const submitButton = document.createElement("button");
+    submitButton.className = "btn-primary";
+    submitButton.innerText = "Submit";
+    submitButton.addEventListener("click", submitPicks);
+    formContainer.appendChild(submitButton);
+}
+
+async function submitPicks() {
+    const checkboxes = document.querySelectorAll(".driver-checkbox:checked");
+    const driverIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+    if (driverIds.length !== 5) {
+        alert("You must select exactly 5 drivers.");
+        return;
+    }
+
+    const response = await fetch(`${API_BASE}/picks`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+            race_id: selectedRace.id,
+            driver_ids: driverIds
+        })
+    });
+
+    if (response.ok) {
+        alert("Picks submitted!");
+        document.getElementById("pick-form").innerHTML = "";
+        loadRaces(document.getElementById("season-select").value);
+    } else {
+        const error = await response.json();
+        alert(`Failed to submit picks: ${error.detail}`);
+    }
+}
+
+document.getElementById("season-select").addEventListener("change", (event) => {
+    loadRaces(event.target.value);
+});
+
+document.getElementById("login").addEventListener("click", () => {
+    auth0Client.loginWithRedirect();
+});
+
+document.getElementById("logout").addEventListener("click", () => {
+    auth0Client.logout({ logoutParams: { returnTo: window.location.href.split('?')[0] } });
+});
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
 </body>
 </html>
