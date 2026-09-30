@@ -213,7 +213,6 @@
   </select>
 
   <div id="app-content"></div>
-  <div id="pick-form"></div>
 </main>
 
 <script>
@@ -281,112 +280,80 @@ async function renderRaces(races) {
     container.innerHTML = "";
 
     for (const race of races) {
-        const row = document.createElement("div");
-        row.className = "race-row";
+        const card = document.createElement("div");
+        card.innerHTML = `
+            <span class="race-round">R${race.round}</span>
+            <div class="race-body">
+                <div class="race-name">${race.race_name}</div>
+                <div class="race-meta">${race.circuit_name} · ${race.date}</div>
+            </div>
+        `;
 
-        const round = document.createElement("div");
-        round.className = "race-round";
-        round.innerText = race.round;
-
-        const body = document.createElement("div");
-        body.className = "race-body";
-
-        const name = document.createElement("div");
-        name.className = "race-name";
-        name.innerText = race.race_name;
-
-        const meta = document.createElement("div");
-        meta.className = "race-meta";
-        meta.innerText = `${race.circuit_name} — ${race.date}`;
-
-        body.appendChild(name);
-        body.appendChild(meta);
-
-        const actions = document.createElement("div");
-        actions.className = "race-actions";
-        body.appendChild(actions);
-
-        row.appendChild(round);
-        row.appendChild(body);
+        const actionArea = document.createElement("div");
+        actionArea.className = "race-actions";
+        card.appendChild(actionArea);
 
         if (accessToken) {
             const picksResponse = await fetch(`${API_BASE}/picks/${race.season}/${race.round}`, {
                 headers: { "Authorization": `Bearer ${accessToken}` }
             });
-
             if (picksResponse.ok) {
                 const picks = await picksResponse.json();
                 if (picks.length > 0) {
-                    await renderExistingPicks(actions, race, picks);
+                    renderExistingPicks(actionArea, picks);
                 } else {
-                    renderPickButton(actions, race);
+                    renderPickButton(actionArea, race);
                 }
             }
         }
 
-        container.appendChild(row);
+        container.appendChild(card);
     }
 }
 
 function renderPickButton(container, race) {
-    const pickButton = document.createElement("button");
-    pickButton.className = "btn-primary";
-    pickButton.innerText = "Submit picks";
-    pickButton.addEventListener("click", () => showPickForm(race));
-    container.appendChild(pickButton);
+    const button = document.createElement("button");
+    button.className = "btn-primary";
+    button.innerText = "Submit picks";
+    button.addEventListener("click", () => showPickForm(container, race));
+    container.appendChild(button);
 }
 
-async function renderExistingPicks(container, race, picks) {
-    const scoreResponse = await fetch(`${API_BASE}/scores/${race.season}?race_id=${race.id}`, {
-        headers: { "Authorization": `Bearer ${accessToken}` }
-    });
-    const scoreData = scoreResponse.ok ? await scoreResponse.json() : null;
-
-    const picksText = picks.map(p => p.name).join(", ");
-    const points = scoreData && scoreData.scores ? scoreData.scores.points : null;
-
-    const summary = document.createElement("div");
-    summary.className = "picks-summary";
-    summary.innerHTML = `Your picks: ${picksText}` + (points !== null ? ` — <span class="points">${points} pts</span>` : "");
-    container.appendChild(summary);
+function renderExistingPicks(container, picks) {
+    container.innerHTML = "";
+    const p = document.createElement("p");
+    p.className = "picks-summary";
+    p.innerText = `Your picks: ${picks.map(x => x.name).join(", ")}`;
+    container.appendChild(p);
 }
 
-async function showPickForm(race) {
-    selectedRace = race;
-
+async function showPickForm(container, race) {
     const response = await fetch(`${API_BASE}/drivers/${race.season}`);
     const drivers = await response.json();
 
-    const formContainer = document.getElementById("pick-form");
-    formContainer.innerHTML = `<h3>Picks for Round ${race.round}: ${race.race_name}</h3>`;
-
-    const grid = document.createElement("div");
-    grid.className = "driver-grid";
+    container.innerHTML = "";
+    const form = document.createElement("div");
+    form.className = "pick-form";
 
     drivers.forEach(driver => {
         const label = document.createElement("label");
         label.className = "driver-option";
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.value = driver.id;
-        checkbox.className = "driver-checkbox";
-        label.appendChild(checkbox);
-        label.append(driver.name);
-        grid.appendChild(label);
+        label.innerHTML = `<input type="checkbox" class="driver-checkbox" value="${driver.id}"><span>${driver.name}</span>`;
+        form.appendChild(label);
     });
-
-    formContainer.appendChild(grid);
 
     const submitButton = document.createElement("button");
     submitButton.className = "btn-primary";
     submitButton.innerText = "Submit";
-    submitButton.addEventListener("click", submitPicks);
-    formContainer.appendChild(submitButton);
+    submitButton.addEventListener("click", () => submitPicks(container, race, form));
+    form.appendChild(submitButton);
+
+    container.appendChild(form);
 }
 
-async function submitPicks() {
-    const checkboxes = document.querySelectorAll(".driver-checkbox:checked");
-    const driverIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+async function submitPicks(container, race, form) {
+    const checked = form.querySelectorAll(".driver-checkbox:checked");
+    const driverIds = Array.from(checked).map(cb => parseInt(cb.value));
 
     if (driverIds.length !== 5) {
         alert("You must select exactly 5 drivers.");
@@ -395,20 +362,15 @@ async function submitPicks() {
 
     const response = await fetch(`${API_BASE}/picks`, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-            race_id: selectedRace.id,
-            driver_ids: driverIds
-        })
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+        body: JSON.stringify({ race_id: race.id, driver_ids: driverIds })
     });
 
     if (response.ok) {
-        alert("Picks submitted!");
-        document.getElementById("pick-form").innerHTML = "";
-        loadRaces(document.getElementById("season-select").value);
+        const picksResponse = await fetch(`${API_BASE}/picks/${race.season}/${race.round}`, {
+            headers: { "Authorization": `Bearer ${accessToken}` }
+        });
+        renderExistingPicks(container, await picksResponse.json());
     } else {
         const error = await response.json();
         alert(`Failed to submit picks: ${error.detail}`);
