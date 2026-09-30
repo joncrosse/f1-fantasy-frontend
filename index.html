@@ -87,7 +87,7 @@
   }
 
   main {
-    max-width: 720px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 1.25rem;
   }
@@ -293,6 +293,7 @@ async function renderRaces(races) {
 
     for (const race of races) {
         const card = document.createElement("div");
+        card.className = "race-row"
         card.innerHTML = `
             <span class="race-round">R${race.round}</span>
             <div class="race-body">
