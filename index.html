@@ -293,7 +293,7 @@ async function renderRaces(races) {
 
     for (const race of races) {
         const card = document.createElement("div");
-        card.className = "race-row"
+        card.className = "race-row";
         card.innerHTML = `
             <span class="race-round">R${race.round}</span>
             <div class="race-body">
@@ -302,9 +302,10 @@ async function renderRaces(races) {
             </div>
         `;
 
+        const raceBody = card.querySelector(".race-body");
         const actionArea = document.createElement("div");
         actionArea.className = "race-actions";
-        card.appendChild(actionArea);
+        raceBody.appendChild(actionArea);
 
         if (accessToken) {
             const picksResponse = await fetch(`${API_BASE}/picks/${race.season}/${race.round}`, {
