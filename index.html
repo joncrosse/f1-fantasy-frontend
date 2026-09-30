@@ -300,7 +300,7 @@ async function renderRaces(races) {
             if (picksResponse.ok) {
                 const picks = await picksResponse.json();
                 if (picks.length > 0) {
-                    renderExistingPicks(actionArea, picks);
+                    renderExistingPicks(actionArea, race, picks);
                 } else {
                     renderPickButton(actionArea, race);
                 }
@@ -319,11 +319,18 @@ function renderPickButton(container, race) {
     container.appendChild(button);
 }
 
-function renderExistingPicks(container, picks) {
+async function renderExistingPicks(container, race, picks) {
     container.innerHTML = "";
+
+    const scoreResponse = await fetch(`${API_BASE}/scores/${race.season}?race_id=${race.id}`, {
+        headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+    const scoreData = scoreResponse.ok ? await scoreResponse.json() : null;
+    const points = scoreData && scoreData.scores ? scoreData.scores.points : null;
+
     const p = document.createElement("p");
     p.className = "picks-summary";
-    p.innerText = `Your picks: ${picks.map(x => x.name).join(", ")}`;
+    p.innerHTML = `Your picks: ${picks.map(x => x.name).join(", ")}${points !== null ? ` — <span class="points">${points} pts</span>` : ""}`;
     container.appendChild(p);
 }
 
@@ -370,7 +377,7 @@ async function submitPicks(container, race, form) {
         const picksResponse = await fetch(`${API_BASE}/picks/${race.season}/${race.round}`, {
             headers: { "Authorization": `Bearer ${accessToken}` }
         });
-        renderExistingPicks(container, await picksResponse.json());
+        renderExistingPicks(container, race, await picksResponse.json());
     } else {
         const error = await response.json();
         alert(`Failed to submit picks: ${error.detail}`);
