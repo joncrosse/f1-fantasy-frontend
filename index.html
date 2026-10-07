@@ -152,33 +152,50 @@
     color: var(--signal-red);
   }
 
-  #pick-form {
+  .pick-form {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 1rem;
-    margin-top: 1rem;
-  }
+    margin-top: 0.75rem;
+}
 
-  .driver-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-    margin: 0.75rem 0 1rem;
-  }
-
-  @media (min-width: 520px) {
-    .driver-grid { grid-template-columns: 1fr 1fr; }
-  }
-
-  .driver-option {
+.podium-slot {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.75rem;
+    margin-bottom: 0.6rem;
+}
+
+.podium-slot select {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0.5rem 0.6rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 0.6rem 0.7rem;
+    background: var(--surface);
+}
+
+.podium-place {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--racing-green);
+    min-width: 2.5ch;
+}
+
+.podium-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
     font-size: 0.95rem;
+}
+  
+  @media (min-width: 520px) {
+    .driver-grid { grid-template-columns: 1fr 1fr; }
   }
 
   .driver-option input {
@@ -336,6 +353,42 @@ function renderPickButton(container, race) {
 async function renderExistingPicks(container, race, picks) {
     container.innerHTML = "";
 
+    if (picks.some(p => p.place !== null)) {
+        await renderPodiumPicks(container, race, picks);
+    } else {
+        await renderLegacyPicks(container, race, picks);
+    }
+}
+
+async function renderPodiumPicks(container, race, picks) {
+    const ordinals = { 1: "1st", 2: "2nd", 3: "3rd" };
+
+    const list = document.createElement("div");
+    list.className = "podium-list";
+    picks
+        .filter(p => p.place !== null)
+        .forEach(p => {
+            const row = document.createElement("div");
+            row.className = "podium-row";
+            row.innerHTML = `<span class="podium-place">${ordinals[p.place]}</span><span>${p.name}</span>`;
+            list.appendChild(row);
+        });
+    container.appendChild(list);
+
+    const scoreResponse = await fetch(`${API_BASE}/podium-scores/${race.season}/${race.round}`, {
+        headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+    const scoreData = scoreResponse.ok ? await scoreResponse.json() : null;
+
+    if (scoreData && scoreData.score !== null) {
+        const total = document.createElement("p");
+        total.className = "picks-summary";
+        total.innerHTML = `<span class="points">${scoreData.score} pts</span>`;
+        container.appendChild(total);
+    }
+}
+
+async function renderLegacyPicks(container, race, picks) {
     const scoreResponse = await fetch(`${API_BASE}/scores/${race.season}?race_id=${race.id}`, {
         headers: { "Authorization": `Bearer ${accessToken}` }
     });
@@ -356,35 +409,57 @@ async function showPickForm(container, race) {
     const form = document.createElement("div");
     form.className = "pick-form";
 
-    drivers.forEach(driver => {
-        const label = document.createElement("label");
-        label.className = "driver-option";
-        label.innerHTML = `<input type="checkbox" class="driver-checkbox" value="${driver.id}"><span>${driver.name}</span>`;
-        form.appendChild(label);
+    const labels = { 1: "1st", 2: "2nd", 3: "3rd" };
+    const options = drivers.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+
+    const selects = [1, 2, 3].map(place => {
+        const row = document.createElement("label");
+        row.className = "podium-slot";
+        row.innerHTML = `<span class="podium-place">${labels[place]}</span>`;
+
+        const select = document.createElement("select");
+        select.dataset.place = place;
+        select.innerHTML = `<option value="">Choose a driver</option>${options}`;
+        select.addEventListener("change", () => syncOptions(selects));
+
+        row.appendChild(select);
+        form.appendChild(row);
+        return select;
     });
 
     const submitButton = document.createElement("button");
     submitButton.className = "btn-primary";
-    submitButton.innerText = "Submit";
-    submitButton.addEventListener("click", () => submitPicks(container, race, form));
+    submitButton.innerText = "Submit picks";
+    submitButton.addEventListener("click", () => submitPicks(container, race, selects));
     form.appendChild(submitButton);
 
     container.appendChild(form);
 }
 
-async function submitPicks(container, race, form) {
-    const checked = form.querySelectorAll(".driver-checkbox:checked");
-    const driverIds = Array.from(checked).map(cb => parseInt(cb.value));
+function syncOptions(selects) {
+    const chosen = new Set(selects.map(s => s.value).filter(v => v !== ""));
+    selects.forEach(select => {
+        Array.from(select.options).forEach(option => {
+            option.disabled = option.value !== "" && chosen.has(option.value) && option.value !== select.value;
+        });
+    });
+}
 
-    if (driverIds.length !== 5) {
-        alert("You must select exactly 5 drivers.");
+async function submitPicks(container, race, selects) {
+    if (selects.some(s => s.value === "")) {
+        alert("Choose a driver for each place.");
         return;
     }
 
-    const response = await fetch(`${API_BASE}/picks`, {
+    const picks = selects.map(s => ({
+        driver_id: parseInt(s.value),
+        place: parseInt(s.dataset.place)
+    }));
+
+    const response = await fetch(`${API_BASE}/podium-picks`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
-        body: JSON.stringify({ race_id: race.id, driver_ids: driverIds })
+        body: JSON.stringify({ race_id: race.id, picks })
     });
 
     if (response.ok) {
