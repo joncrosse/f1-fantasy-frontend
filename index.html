@@ -353,7 +353,7 @@ function renderPickButton(container, race) {
 async function renderExistingPicks(container, race, picks) {
     container.innerHTML = "";
 
-    if (picks.some(p => p.place !== null)) {
+    if (picks.some(p => p.place != null)) {
         await renderPodiumPicks(container, race, picks);
     } else {
         await renderLegacyPicks(container, race, picks);
@@ -366,7 +366,7 @@ async function renderPodiumPicks(container, race, picks) {
     const list = document.createElement("div");
     list.className = "podium-list";
     picks
-        .filter(p => p.place !== null)
+        .filter(p => p.place != null)
         .forEach(p => {
             const row = document.createElement("div");
             row.className = "podium-row";
