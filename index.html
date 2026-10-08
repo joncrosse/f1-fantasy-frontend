@@ -380,10 +380,10 @@ async function renderPodiumPicks(container, race, picks) {
     });
     const scoreData = scoreResponse.ok ? await scoreResponse.json() : null;
 
-    if (scoreData && scoreData.score !== null) {
+    if (scoreData && scoreData.score.total !== null) {
         const total = document.createElement("p");
         total.className = "picks-summary";
-        total.innerHTML = `<span class="points">${scoreData.score} pts</span>`;
+        total.innerHTML = `<span class="points">${scoreData.score.total} pts</span>`;
         container.appendChild(total);
     }
 }
