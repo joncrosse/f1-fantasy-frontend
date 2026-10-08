@@ -457,7 +457,7 @@ async function submitPicks(container, race, selects) {
     }));
 
     const response = await fetch(`${API_BASE}/podium-picks`, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
         body: JSON.stringify({ race_id: race.id, picks })
     });
