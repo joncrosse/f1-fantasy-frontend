@@ -376,15 +376,16 @@ async function renderPodiumPicks(container, race, picks) {
     container.appendChild(list);
 
     const scoreResponse = await fetch(`${API_BASE}/podium-scores/${race.season}/${race.round}`, {
-        headers: { "Authorization": `Bearer ${accessToken}` }
+      headers: { "Authorization": `Bearer ${accessToken}` }
     });
     const scoreData = scoreResponse.ok ? await scoreResponse.json() : null;
+    const total = scoreData?.score?.total;
 
-    if (scoreData && scoreData.score.total !== null) {
-        const total = document.createElement("p");
-        total.className = "picks-summary";
-        total.innerHTML = `<span class="points">${scoreData.score.total} pts</span>`;
-        container.appendChild(total);
+    if (total != null) {
+      const totalEl = document.createElement("p");
+      totalEl.className = "picks-summary";
+      totalEl.innerHTML = `<span class="points">${total} pts</span>`;
+      container.appendChild(totalEl);
     }
 }
 
