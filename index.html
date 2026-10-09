@@ -402,7 +402,7 @@ async function renderLegacyPicks(container, race, picks) {
 }
 
 async function showPickForm(container, race) {
-    const response = await fetch(`${API_BASE}/drivers/${race.season}/?limit=100`);
+    const response = await fetch(`${API_BASE}/drivers/${race.season}`);
     const drivers = await response.json();
 
     container.innerHTML = "";
